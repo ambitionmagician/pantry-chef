@@ -1,0 +1,29 @@
+{
+  "id": "./",
+  "name": "Pantry Chef — cook from what you already have",
+  "short_name": "Pantry Chef",
+  "description": "A private, offline pantry and recipe matcher.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#faf8ef",
+  "theme_color": "#174735",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23174735'/%3E%3Cpath d='M10 31h44a22 22 0 0 1-44 0' fill='%23ffce82'/%3E%3Cpath d='M24 25q-4-4 0-9m9 9q-4-5 0-12m9 12q-4-4 0-9' fill='none' stroke='%23faf8ef' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23174735'/%3E%3Cpath d='M12 31h40a20 20 0 0 1-40 0' fill='%23ffce82'/%3E%3Cpath d='M24 25q-4-4 0-9m9 9q-4-5 0-12m9 12q-4-4 0-9' fill='none' stroke='%23faf8ef' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

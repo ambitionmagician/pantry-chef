@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#174735">
+<meta name="description" content="Find simple recipes using the ingredients already in your pantry.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23174735'/%3E%3Cpath d='M10 31h44a22 22 0 0 1-44 0' fill='%23ffc879'/%3E%3C/svg%3E">
+<title>Pantry Chef — cook from what you already have</title>
+<style>
+:root{color-scheme:light;--ink:#183b30;--pine:#174735;--muted:#52685f;--line:#d4dfd2;--cream:#faf8ef;--gold:#ffce82}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--cream);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--pine);color:white;padding:2.2rem max(5vw,calc((100vw - 74rem)/2))}
+.eyebrow{font-size:.75rem;font-weight:750;letter-spacing:.15em;text-transform:uppercase}
+header .eyebrow{color:var(--gold)}
+h1,h2,h3{font-family:Georgia,serif;line-height:1.15;margin:.35rem 0 .65rem}
+h1{font-size:clamp(2.8rem,8vw,5rem);letter-spacing:-.055em}
+h2{font-size:2rem}h3{font-size:1.45rem}
+header p{margin:.4rem 0 1rem}
+.status,.badge{display:inline-block;padding:.2rem .65rem;border-radius:2rem;font-size:.8rem;font-weight:650}
+.status{background:#285944;color:#f8f4df}
+main{width:min(92%,74rem);margin:1.6rem auto 4rem;display:grid;gap:1.6rem;align-items:start}
+.panel,article{background:white;border:1px solid var(--line);border-radius:1rem;padding:1.15rem}
+.panel p,.sub{color:var(--muted);margin:.4rem 0 1rem}
+input,button{font:inherit}
+input[type=search],input[type=text]{width:100%;min-width:0;border:1px solid #9eafa4;border-radius:.55rem;padding:.65rem;background:white;color:var(--ink)}
+button{border:0;border-radius:.55rem;padding:.6rem .9rem;cursor:pointer;background:var(--pine);color:white;font-weight:650}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:3px solid #bc6714;outline-offset:2px}
+label.caption,.caption{display:block;font-size:.85rem;font-weight:700;margin:.8rem 0 .25rem}
+#items{max-height:19rem;overflow:auto;margin:.7rem 0;padding:.2rem .35rem;border-block:1px solid var(--line);overscroll-behavior:contain}
+.choice{display:flex;align-items:center;gap:.65rem;min-height:2.65rem;cursor:pointer;overflow-wrap:anywhere}
+input[type=checkbox]{accent-color:var(--pine);width:1.15rem;height:1.15rem;flex:none}
+.row{display:flex;align-items:center;gap:.5rem}
+.row button{flex:none}
+#notice{font-size:.85rem;color:var(--muted);margin-top:.6rem}
+#cards{display:grid;gap:.8rem}
+article{padding:1.15rem 1.25rem}
+.badge{background:#fff0d7;color:#74430f}
+.ready{background:#dff1df;color:#20552d}
+.meta{color:var(--muted);font-size:.9rem}
+.shop{border-left:.2rem solid var(--gold);padding-left:.65rem;margin:.8rem 0;overflow-wrap:anywhere}
+summary{cursor:pointer;color:var(--pine);font-weight:700;padding:.45rem 0}
+.controls{display:flex;align-items:center;gap:.7rem;margin:.65rem 0}
+.controls button{width:2.5rem;padding:.4rem}
+.controls span{min-width:5.5rem;text-align:center}
+h4{margin:1rem 0 .25rem}ul,ol{padding-left:1.35rem;margin:.3rem 0}
+li+li{margin-top:.25rem}
+.empty{color:var(--muted);font-size:.9rem;padding:.5rem 0}
+#more{margin-top:1rem}
+@media(min-width:48rem){main{grid-template-columns:minmax(16rem,.85fr) minmax(0,1.5fr)}.panel{position:sticky;top:.75rem}#items{max-height:min(40vh,25rem)}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">The everyday kitchen</div>
+<h1>Pantry Chef</h1>
+<p>Cook from what you already have.</p>
+<span class="status" id="offline" role="status">Local recipe book</span>
+</header>
+<main>
+<section class="panel" aria-labelledby="pantryTitle">
+<div class="eyebrow">01 / Take stock</div>
+<h2 id="pantryTitle">Your pantry</h2>
+<p>Check what you have. Tap water is assumed; everything else counts.</p>
+<label class="caption" for="search">Find an ingredient</label>
+<div class="row">
+<input type="search" id="search" placeholder="Try “rice”" autocomplete="off">
+<button type="button" id="clearSearch" aria-label="Clear search" disabled>✕</button>
+</div>
+<div class="caption" id="count" aria-live="polite"></div>
+<div id="items" role="group" aria-label="Pantry ingredients"></div>
+<form id="addForm">
+<label class="caption" for="extra">Add an ingredient</label>
+<div class="row"><input type="text" id="extra" required maxlength="80" placeholder="Ingredient name"><button>Add</button></div>
+</form>
+<div id="notice" role="status"></div>
+</section>
+<section aria-labelledby="matchTitle">
+<div class="eyebrow">02 / Make something</div>
+<h2 id="matchTitle">Your best matches</h2>
+<p class="sub" id="summary" role="status" aria-live="polite"></p>
+<div id="cards"></div>
+<button id="more" type="button">Show more recipes</button>
+</section>
+</main>
+<script>
+"use strict";
+const book=[
+["Tomato toast",8,2,"2:slices:bread|2::tomatoes|1:tsp:olive oil","Toast the bread until crisp.|Chop the tomatoes, toss with oil and spoon over the toast."],
+["Soft scrambled eggs",8,2,"4::eggs|2:tsp:butter","Beat the eggs in a bowl.|Melt butter over low heat. Add eggs and gently fold until set, with no liquid egg remaining."],
+["Banana oat pancakes",18,2,"1::bananas|2::eggs|0.5:cup:rolled oats","Mash the banana. Beat in the eggs and oats; rest for five minutes.|Spoon small rounds into a warm nonstick skillet. Cook over medium-low heat until the edges set, then flip and cook through."],
+["Apple cinnamon oats",12,2,"1:cup:rolled oats|1::apples|0.5:tsp:cinnamon","Dice the apple. Combine with oats, cinnamon and twice the oat volume of water.|Simmer, stirring often, until the apple softens and the oats thicken."],
+["Peanut butter banana toast",6,2,"2:slices:bread|2:tbsp:peanut butter|1::bananas","Toast the bread and spread with peanut butter.|Slice the banana into coins and arrange on top."],
+["Berry yogurt bowls",5,2,"1:cup:plain yogurt|1:cup:berries|0.25:cup:rolled oats","Toast the oats in a dry skillet, stirring until fragrant.|Divide yogurt between bowls and top with berries and oats."],
+["French toast fingers",15,2,"4:slices:bread|2::eggs|0.25:cup:milk|1:tsp:butter","Whisk eggs with milk in a shallow dish. Dip the bread briefly on both sides.|Melt butter in a skillet over medium heat. Cook each slice on both sides until golden and the center is set. Cut into fingers."],
+["Spinach omelet",12,1,"2::eggs|1:cup:spinach|1:tsp:olive oil","Wilt spinach in oil in a small skillet.|Beat eggs and pour over spinach. Cook gently, lifting edges to let liquid flow underneath. Fold once set."],
+["Cheddar quesadillas",12,2,"2::tortillas|0.5:cup:cheddar","Grate cheddar over half of each tortilla and fold closed.|Toast in a dry skillet over medium heat on both sides until crisp and melted."],
+["Black bean tacos",15,2,"4::tortillas|1.5:cups:canned black beans|0.25:cup:salsa","Drain beans and heat in a skillet with salsa. Mash some beans for texture.|Warm tortillas in a dry pan, fill and fold."],
+["Garlic butter noodles",18,2,"6:oz:pasta|2:tbsp:butter|2:cloves:garlic","Boil pasta until tender, reserving a mug of cooking water before draining.|Melt butter in a pan. Stir in minced garlic for a minute, then toss with pasta and a splash of cooking water."],
+["Quick tomato pasta",22,2,"6:oz:pasta|1:cup:canned tomatoes|2:cloves:garlic|1:tsp:olive oil","Cook pasta according to the packet.|Soften chopped garlic in oil. Add tomatoes, crush and simmer for ten minutes. Toss with drained pasta."],
+["Lemon chickpea salad",10,2,"1.5:cups:canned chickpeas|1::cucumbers|0.5::lemons|1:tbsp:olive oil","Drain and rinse chickpeas; dice cucumber.|Whisk lemon juice with oil. Toss everything together."],
+["Tuna cucumber boats",10,2,"1::cucumbers|5:oz:canned tuna|2:tbsp:plain yogurt","Halve cucumber lengthwise and scoop out seeds.|Drain tuna and mix with yogurt. Spoon into cucumber halves and slice into sections."],
+["Crispy potato hash",25,2,"2::potatoes|1::onions|1:tbsp:olive oil","Dice potatoes small. Simmer in water until just tender and drain well.|Brown potatoes in oil over medium heat. Add chopped onion and cook until golden and soft."],
+["Carrot lentil soup",30,2,"0.5:cup:red lentils|2::carrots|0.5:tsp:cumin|2.5:cups:vegetable broth","Rinse lentils and finely dice carrots.|Combine all ingredients in a pot. Simmer for 20 minutes or until soft, then mash lightly."],
+["Tomato bean soup",20,2,"1.5:cups:canned white beans|1:cup:canned tomatoes|1:cup:vegetable broth|0.5:tsp:oregano","Drain beans. Combine with tomatoes, broth and oregano.|Crush tomatoes and simmer for 15 minutes. Mash a few beans to thicken."],
+["Pea and potato mash",25,2,"2::potatoes|1:cup:frozen peas|1:tbsp:butter","Peel and cube potatoes. Simmer in water until almost tender.|Add peas and cook until hot and tender. Drain, add butter and mash."],
+["Broccoli cheddar potatoes",18,2,"2::potatoes|1:cup:broccoli|0.5:cup:cheddar","Pierce potatoes and microwave on a microwave-safe plate, turning halfway, until tender throughout.|Chop broccoli and steam until tender. Split potatoes, fill with broccoli and grated cheese, then microwave briefly to melt."],
+["Egg fried rice",15,2,"2:cups:cooked rice|2::eggs|0.5:cup:frozen peas|1:tbsp:soy sauce|1:tsp:olive oil","Scramble beaten eggs in oil in a hot skillet until set.|Add peas and chilled leftover rice, breaking up clumps. Stir until steaming hot throughout; season with soy sauce."],
+["Spinach rice skillet",12,2,"2:cups:cooked rice|2:cups:spinach|1:clove:garlic|1:tbsp:olive oil","Chop garlic and stir in warm oil until fragrant.|Add spinach and cook until wilted. Add rice and a splash of water; stir until steaming throughout."],
+["Peanut sesame-free noodles",18,2,"6:oz:pasta|2:tbsp:peanut butter|1:tbsp:soy sauce|0.5::lemons","Boil pasta until tender; reserve some cooking water and drain.|Whisk peanut butter, soy sauce and lemon juice with enough hot cooking water to make a smooth sauce. Toss with pasta."],
+["Cabbage carrot slaw",12,2,"2:cups:cabbage|1::carrots|2:tbsp:plain yogurt|0.5::lemons","Shred cabbage finely and grate carrot.|Mix yogurt with lemon juice and toss through the vegetables."],
+["Sweet corn fritters",20,2,"1:cup:canned corn|1::eggs|0.25:cup:flour|1:tbsp:olive oil","Drain corn well. Beat egg, mix with flour and fold in corn.|Heat oil in a skillet. Flatten spoonfuls of batter and cook on both sides until golden and cooked through."],
+["White bean spread",8,2,"1:cup:canned white beans|0.5::lemons|1:tbsp:olive oil|2:slices:bread","Drain beans, then mash with lemon juice and oil. Loosen with a little water if needed.|Toast bread and spread generously with the bean mixture."],
+["Chickpea curry",25,2,"1.5:cups:canned chickpeas|1:cup:coconut milk|1:tsp:curry powder|1:cup:canned tomatoes","Drain chickpeas. Combine tomatoes and curry powder in a saucepan and crush the tomatoes.|Add chickpeas and coconut milk. Simmer gently for 15–20 minutes until thickened."],
+["Coconut red lentils",25,2,"0.75:cup:red lentils|1:cup:coconut milk|1:tsp:curry powder","Rinse lentils. Add to a pot with coconut milk, curry powder and water equal in volume to the coconut milk.|Simmer gently until lentils are soft, stirring and adding water as needed."],
+["Roasted cumin carrots",30,2,"4::carrots|1:tbsp:olive oil|0.5:tsp:cumin","Heat oven to 425°F / 220°C. Cut carrots into thin batons.|Toss with oil and cumin, spread on a tray and roast for 20–25 minutes, turning once."],
+["Lemon broccoli pasta",22,2,"6:oz:pasta|2:cups:broccoli|0.5::lemons|1:tbsp:butter","Boil pasta, adding small broccoli florets for the last three minutes. Reserve some cooking water and drain.|Toss with butter, lemon zest, juice and a little cooking water."],
+["Grilled cheese",12,2,"4:slices:bread|0.75:cup:cheddar|1:tbsp:butter","Grate cheese and sandwich between slices of bread. Butter the outsides.|Cook in a skillet over medium-low heat until crisp and melted, turning once."],
+["Salsa egg skillet",18,2,"4::eggs|1:cup:salsa|2::tortillas","Warm salsa in a small skillet with a splash of water.|Make wells, crack in eggs, cover and simmer until whites and yolks are firm. Serve with warmed tortillas."],
+["Yogurt cucumber dip",10,2,"1:cup:plain yogurt|0.5::cucumbers|1:clove:garlic|0.5::lemons","Grate cucumber and squeeze out excess liquid.|Mix with yogurt, crushed garlic and lemon juice. Serve cool."],
+["Apple peanut stacks",5,2,"2::apples|2:tbsp:peanut butter|2:tbsp:raisins","Core apples and slice into thick rings.|Spread with peanut butter and dot with raisins."],
+["Cinnamon rice pudding",20,2,"1:cup:cooked rice|1:cup:milk|1:tbsp:sugar|0.25:tsp:cinnamon","Combine rice, milk, sugar and cinnamon in a small pot.|Bring to a simmer. Stir frequently until piping hot and creamy, adding milk if needed."],
+["Banana yogurt whip",5,2,"2::bananas|0.75:cup:plain yogurt|0.25:tsp:cinnamon","Mash ripe bananas until smooth.|Beat in yogurt and cinnamon until creamy and divide between cups."],
+["Herbed couscous",12,2,"0.75:cup:instant couscous|0.75:cup:vegetable broth|1:tbsp:olive oil|0.5:tsp:oregano","Bring broth, oil and oregano to a boil.|Remove from heat, stir in couscous and cover. Let stand five minutes, then fluff with a fork."],
+["Corn and bean salad",10,2,"1:cup:canned corn|1:cup:canned black beans|0.25:cup:salsa|0.5::lemons","Drain corn and drain and rinse beans.|Toss with salsa and a squeeze of lemon juice."],
+["Savory mushroom oats",18,2,"1:cup:rolled oats|1.5:cups:mushrooms|2:cups:vegetable broth|1:tbsp:butter","Slice mushrooms and brown in butter in a saucepan.|Add oats and broth. Simmer, stirring often, until creamy."],
+["Garlicky mushroom toast",15,2,"2:cups:mushrooms|2:slices:bread|1:clove:garlic|1:tbsp:butter","Slice mushrooms and sauté in butter until golden. Stir in minced garlic and cook one minute.|Toast bread and pile the mushrooms on top."],
+["Warm lentil spinach bowl",15,2,"1.5:cups:canned lentils|2:cups:spinach|1:tbsp:olive oil|0.5::lemons","Drain lentils and warm in a pan with oil and a splash of water.|Stir in spinach until wilted and finish with lemon juice."],
+["Tomato couscous salad",18,2,"0.75:cup:instant couscous|2::tomatoes|0.5::cucumbers|1:tbsp:olive oil","Cover couscous with an equal volume of boiling water. Cover the bowl and let stand five minutes.|Fluff with a fork. Dice tomatoes and cucumber, then fold in with oil."],
+["Rustic potato soup",30,2,"2::potatoes|1::onions|2:cups:vegetable broth|1:tbsp:butter","Soften chopped onion in butter. Add diced potatoes and broth.|Simmer until potatoes are soft, about 18 minutes. Mash in the pot to your preferred texture."]
+].map(([name,time,base,raw,method])=>({name,time,base,ingredients:raw.split("|").map(s=>{const [q,u,n]=s.split(":");return {q:Number(q),u,n}}),steps:method.split("|")}));
+
+const $=id=>document.getElementById(id);
+const node=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el};
+const norm=s=>s.trim().toLowerCase().replace(/\s+/g," ");
+const baseNames=new Set(book.flatMap(r=>r.ingredients.map(i=>i.n)));
+const aliases=new Map(Object.entries({
+  "egg":"eggs","eggs":"eggs",
+  "tomato":"tomatoes","tomatoes":"tomatoes",
+  "potato":"potatoes","potatoes":"potatoes",
+  "onion":"onions","onions":"onions",
+  "carrot":"carrots","carrots":"carrots",
+  "banana":"bananas","bananas":"bananas",
+  "apple":"apples","apples":"apples",
+  "lemon":"lemons","lemons":"lemons",
+  "cucumber":"cucumbers","cucumbers":"cucumbers",
+  "mushroom":"mushrooms","mushrooms":"mushrooms",
+  "tortilla":"tortillas","tortillas":"tortillas",
+  "garlic":"garlic","garlic clove":"garlic","garlic cloves":"garlic","clove garlic":"garlic","cloves garlic":"garlic",
+  "oats":"rolled oats","rolled oats":"rolled oats","oat":"rolled oats","oatmeal":"rolled oats",
+  "yogurt":"plain yogurt","yoghurt":"plain yogurt","plain yogurt":"plain yogurt","greek yogurt":"plain yogurt",
+  "milk":"milk",
+  "cheese":"cheddar","cheddar":"cheddar","cheddar cheese":"cheddar",
+  "rice":"cooked rice","cooked rice":"cooked rice",
+  "pasta":"pasta","noodles":"pasta","spaghetti":"pasta",
+  "bread":"bread","toast":"bread",
+  "peanut butter":"peanut butter","peanutbutter":"peanut butter",
+  "white beans":"canned white beans","canned white beans":"canned white beans","cannellini beans":"canned white beans","cannellini":"canned white beans",
+  "black beans":"canned black beans","canned black beans":"canned black beans",
+  "chickpeas":"canned chickpeas","canned chickpeas":"canned chickpeas","chickpea":"canned chickpeas","garbanzo beans":"canned chickpeas","garbanzo":"canned chickpeas",
+  "tuna":"canned tuna","canned tuna":"canned tuna",
+  "lentils":"red lentils","red lentils":"red lentils","red lentil":"red lentils","canned lentils":"canned lentils","canned lentil":"canned lentils","brown lentils":"canned lentils",
+  "vegetable broth":"vegetable broth","broth":"vegetable broth","stock":"vegetable broth","vegetable stock":"vegetable broth","veggie broth":"vegetable broth","veggie stock":"vegetable broth",
+  "soy sauce":"soy sauce","soysauce":"soy sauce",
+  "corn":"canned corn","canned corn":"canned corn","sweetcorn":"canned corn",
+  "peas":"frozen peas","frozen peas":"frozen peas","green peas":"frozen peas",
+  "couscous":"instant couscous","instant couscous":"instant couscous",
+  "coconut milk":"coconut milk","coconutmilk":"coconut milk",
+  "salsa":"salsa",
+  "curry powder":"curry powder",
+  "cumin":"cumin","cumin powder":"cumin",
+  "cinnamon":"cinnamon","cinnamon powder":"cinnamon",
+  "oregano":"oregano","oregano flakes":"oregano",
+  "flour":"flour","all purpose flour":"flour",
+  "sugar":"sugar",
+  "raisins":"raisins",
+  "berries":"berries","mixed berries":"berries","strawberries":"berries","blueberries":"berries","raspberries":"berries",
+  "spinach":"spinach","baby spinach":"spinach",
+  "broccoli":"broccoli",
+  "cabbage":"cabbage",
+  "butter":"butter",
+  "olive oil":"olive oil","oil":"olive oil","cooking oil":"olive oil"
+}));
+const canonical=s=>aliases.get(norm(s))||norm(s);
+const key="pantry-chef-stock-v1";
+const yieldKey="pantry-chef-yields-v1";
+let custom=new Set(),stock=new Set(),limit=6;
+const yields=new Map(),expanded=new Set();
+try{
+ const saved=JSON.parse(localStorage.getItem(key)||"{}");
+ const clean=a=>Array.isArray(a)?a.filter(s=>typeof s==="string"&&s.trim()&&s.length<=80).map(canonical):[];
+ custom=new Set(clean(saved.custom));
+ stock=new Set(clean(saved.stock).filter(n=>custom.has(n)||baseNames.has(n)));
+}catch{$("notice").textContent="Saved pantry unavailable. You can still use this session."}
+try{
+ const y=JSON.parse(localStorage.getItem(yieldKey)||"{}");
+ if(y&&typeof y==="object")Object.entries(y).forEach(([k,v])=>{if(Number.isFinite(v)&&v>=1&&v<=24)yields.set(k,v)});
+}catch{}
+
+function save(msg=""){
+ try{localStorage.setItem(key,JSON.stringify({custom:[...custom],stock:[...stock]}));$("notice").textContent=msg}
+ catch{$("notice").textContent="Storage unavailable: pantry changes will last for this session only."}
+}
+function saveYields(){
+ try{const o={};yields.forEach((v,k)=>o[k]=v);localStorage.setItem(yieldKey,JSON.stringify(o))}
+ catch{}
+}
+function count(){$("count").textContent=`${stock.size} ingredient${stock.size===1?"":"s"} on hand`}
+function slug(n){return n.replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")}
+function pantry(){
+ count();
+ const list=$("items");
+ list.replaceChildren();
+ const query=norm($("search").value);
+ const items=[...new Set([...baseNames,...custom])].sort();
+ let shown=0;
+ for(const n of items){
+  if(!n.includes(query)&&!(query&&canonical(query)===n))continue;
+  shown++;
+  const id="ing-"+slug(n);
+  const label=node("label",undefined,"choice");
+  const box=node("input");
+  box.type="checkbox";box.checked=stock.has(n);box.id=id;
+  box.onchange=()=>{if(box.checked)stock.add(n);else stock.delete(n);save();count();matches()};
+  label.htmlFor=id;
+  label.append(box,document.createTextNode(n));
+  list.append(label);
+ }
+ if(!shown)list.append(node("p","No results. Add your ingredient below.","empty"));
+}
+$("search").oninput=()=>{$("clearSearch").disabled=!$("search").value;pantry()};
+$("clearSearch").onclick=()=>{$("search").value="";$("search").focus();$("clearSearch").disabled=true;pantry()};
+$("addForm").onsubmit=e=>{
+ e.preventDefault();
+ const raw=$("extra").value;
+ const n=canonical(raw);
+ if(!n){$("extra").focus();return}
+ if(!baseNames.has(n))custom.add(n);
+ stock.add(n);
+ save(`On hand: ${n}.`);
+ $("extra").value="";$("search").value="";$("clearSearch").disabled=true;
+ pantry();matches();
+};
+
+function frac(q){
+ const sign=q<0?"-":"";
+ q=Math.abs(q);
+ const whole=Math.floor(q);
+ const rem=Number((q-whole).toFixed(6));
+ const map=[[1/8,"⅛"],[1/4,"¼"],[3/8,"⅜"],[1/3,"⅓"],[1/2,"½"],[2/3,"⅔"],[5/8,"⅝"],[3/4,"¾"],[7/8,"⅞"]];
+ let piece="";
+ for(const [v,s] of map){if(Math.abs(rem-v)<0.001){piece=s;break}}
+ if(!piece&&rem>0)return sign+String(q);
+ if(whole===0)return sign+piece;
+ if(piece==="")return sign+whole;
+ return sign+whole+piece;
+}
+function pluralUnit(u,q){
+ if(!u)return "";
+ if(Math.abs(q-1)<0.001)return u.replace(/s$/,"");
+ if(u.endsWith("s"))return u;
+ const irregular={cup:"cups",clove:"cloves",slice:"slices",piece:"pieces"};
+ return irregular[u]??u;
+}
+function amount(i,scale){
+ const q=i.q*scale;
+ const u=pluralUnit(i.u,q);
+ return [frac(q),u,i.n].filter(Boolean).join(" ");
+}
+
+function card(r,missing){
+ const el=node("article"),h=node("h3",r.name);
+ h.style.scrollMarginTop="1rem";
+ const badge=node("span",missing.length?`${missing.length} missing`:"Ready to cook",missing.length?"badge":"badge ready");
+ el.append(badge,h);
+ const meta=node("div",`${r.time} min`,"meta");
+ const controls=node("div",undefined,"controls");
+ const minus=node("button","−"),plus=node("button","+"),value=node("span");
+ minus.setAttribute("aria-label","Decrease servings");plus.setAttribute("aria-label","Increase servings");
+ minus.setAttribute("type","button");plus.setAttribute("type","button");
+ value.setAttribute("aria-live","polite");
+ controls.append(minus,value,plus);
+ const shop=node("p",undefined,"shop");
+ const d=node("details"),s=node("summary","Ingredients & method");
+ d.open=expanded.has(r.name);
+ const ul=node("ul"),ol=node("ol");r.steps.forEach(step=>ol.append(node("li",step)));
+ d.append(s,node("h4","Ingredients"),ul,node("h4","Method"),ol);el.append(meta,controls,shop,d);
+ function update(delta){
+  const servings=Math.min(24,Math.max(1,(yields.get(r.name)??r.base)+delta));
+  yields.set(r.name,servings);
+  saveYields();
+  const scale=servings/r.base;
+  value.textContent=`${servings} serving${servings===1?"":"s"}`;
+  minus.disabled=servings===1;plus.disabled=servings===24;
+  shop.replaceChildren(node("strong","Shopping list: "),document.createTextNode(missing.length?missing.map(i=>amount(i,scale)).join(" · "):"Nothing to buy."));
+  ul.replaceChildren(...r.ingredients.map(i=>node("li",`${amount(i,scale)} — ${stock.has(i.n)?"on hand":"to buy"}`)));
+  d.ontoggle=()=>{if(d.open)expanded.add(r.name);else expanded.delete(r.name)};
+ }
+ minus.onclick=()=>update(-1);plus.onclick=()=>update(1);update(0);return el;
+}
+function matches(){
+ const rows=book.map(r=>({r,m:r.ingredients.filter(i=>!stock.has(i.n))})).sort((a,b)=>a.m.length-b.m.length||a.r.time-b.r.time||a.r.name.localeCompare(b.r.name));
+ const ready=rows.filter(x=>!x.m.length).length;
+ $("summary").textContent=`${ready} ready to cook · Showing ${Math.min(limit,rows.length)} of ${rows.length}, fewest missing first.`;
+ $("cards").replaceChildren(...rows.slice(0,limit).map(x=>card(x.r,x.m)));
+ $("more").hidden=limit>=rows.length;
+}
+$("more").onclick=()=>{const first=limit;limit+=6;matches();const title=$("cards").children[first]?.querySelector("h3");if(title){title.tabIndex=-1;title.focus()}};
+pantry();matches();
+if("serviceWorker" in navigator && window.isSecureContext){
+ navigator.serviceWorker.register("./sw.js").then(()=>navigator.serviceWorker.ready).then(()=>{$("offline").textContent="Offline ready"}).catch(()=>{$("offline").textContent="Offline setup unavailable"});
+}else $("offline").textContent="For offline installation, serve on HTTPS or localhost";
+</script>
+</body>
+</html>
